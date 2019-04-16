@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>用户列表</title>
+    <link rel="stylesheet" th:href="@{css/user.css}"/>
+    <script th:src="@{js/jquery.js}"></script>
+    <script th:src="@{js/user.js}"></script>
+</head>
+<body>
+    <table>
+        <tr th:each="user : ${users}">
+            <td th:text="${user.id}">1</td>
+            <td th:text="${user.name}">zhangsan</td>
+            <td th:text="${user.age}">18</td>
+        </tr>
+    </table>
+</body>
+</html>
