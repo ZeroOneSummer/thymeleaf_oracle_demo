@@ -1,5 +1,6 @@
 package com.dimai.thymeleaf_web.controller;
 
+import com.dimai.thymeleaf_web.commons.annotion.SysLog;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -24,6 +25,7 @@ public class UserController {
     @Autowired
     UserService.Iface userService;
 
+    @SysLog("切面测试")
     @GetMapping("getUsers")
     public String getUsers(Model model) throws Exception {
 

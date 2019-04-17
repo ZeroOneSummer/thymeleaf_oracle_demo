@@ -20,7 +20,7 @@ public class UserServiceImpl implements UserService.Iface {
 
     @Override
     public List<UserEntity> getUsers() throws TException {
-        return userMapper.getUsers();
+        return userMapper.getUsers(1);
     }
 
     @Override
