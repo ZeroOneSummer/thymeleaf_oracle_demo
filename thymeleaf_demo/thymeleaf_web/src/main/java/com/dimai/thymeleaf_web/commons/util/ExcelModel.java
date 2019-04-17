@@ -67,6 +67,7 @@ public class ExcelModel {
     }
 
     private List<ExcelColumn> columns;
+
     private String title;
 
     public List<ExcelColumn> getColumns() {

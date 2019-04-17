@@ -2,8 +2,8 @@ package com.dimai.thymeleaf_web.commons.Aspect;
 
 
 import com.dimai.thymeleaf_web.commons.annotion.SysLog;
-import com.dimai.thymeleaf_web.commons.util.IpUtil;
 import com.google.gson.Gson;
+import com.tencent.oa.fm.jarvis.core.common.StringUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -56,7 +56,8 @@ public class SysLogAspet {
                 } else if ("GET".equals(method)) {
                     params = queryString;
                 }
-                params = URLDecoder.decode(params,"UTF-8");
+                if(!StringUtil.isNullOrBlank(params))
+                    params = URLDecoder.decode(params,"UTF-8");
             }
         }catch (Exception e){
             e.printStackTrace();
