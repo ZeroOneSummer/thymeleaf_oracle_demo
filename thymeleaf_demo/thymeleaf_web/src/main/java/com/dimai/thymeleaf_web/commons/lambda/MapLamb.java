@@ -1,4 +1,4 @@
-package com.dimai.thymeleaf_web.lambda;
+package com.dimai.thymeleaf_web.commons.lambda;
 
 import com.google.gson.Gson;
 

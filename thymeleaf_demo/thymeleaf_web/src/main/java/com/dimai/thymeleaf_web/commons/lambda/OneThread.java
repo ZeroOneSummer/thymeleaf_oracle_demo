@@ -1,4 +1,4 @@
-package com.dimai.thymeleaf_web.lambda;
+package com.dimai.thymeleaf_web.commons.lambda;
 
 /**
  * Created by pijiang on 2019/4/19.
