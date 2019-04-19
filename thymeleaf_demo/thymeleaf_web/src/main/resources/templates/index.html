@@ -9,15 +9,31 @@
     <script th:src="@{js/user.js}"></script>
 </head>
 <body>
-    <table>
-        <tr th:each="user : ${users}">
-            <td th:text="${user.id}">1</td>
-            <td th:text="${user.name}">zhangsan</td>
-            <td th:text="${user.age}">18</td>
-        </tr>
-    </table>
-    <div style="float: left; margin-top: 10px">
-        <a href="http://localhost:8090/admin/downExcel">导出</a>
+    <div class="query-item">
+        <a href="http://localhost:8090/admin/getUsers">用户列表</a>
+        <table>
+            <tr th:each="user : ${users}">
+                <td th:text="${user.id}">1</td>
+                <td th:text="${user.name}">zhangsan</td>
+                <td th:text="${user.age}">18</td>
+            </tr>
+        </table>
+    </div>
+    <div class="query-item">
+        <a href="http://localhost:8090/admin/downExcel">poi导出</a>&nbsp;&nbsp;&nbsp;
+        <a href="http://localhost:8090/admin/downExcelByEasy">easypoi导出</a>
+    </div>
+    <div class="query-item">
+        <div class="query-box">
+            <form id="uploadForm"  method="POST" enctype="multipart/form-data">
+                <input id="file" type="file" name="file" style="display:none">
+                <div class="input-append">
+                    <input id="fileName" class="input-large" type="text" style="height:30px;" onclick="$('input[id=file]').click();">
+                    <a class="btn btn-primary" onclick="$('input[id=file]').click();">上传</a>
+                    <a class="btn btn-primary" onclick="importExcel();"><i class="fa fa-upload"></i>&nbsp;导入</a>
+                </div>
+            </form>
+        </div>
     </div>
 </body>
 </html>

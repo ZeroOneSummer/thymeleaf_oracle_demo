@@ -25,7 +25,7 @@ public interface UserMapper {
             return new SQL(){{
                 SELECT("*");
                 FROM("\"user\"");
-                if(id != 0 && id != null){
+                if(id != null){
                     WHERE("id=" + id);
                 }
             }}.toString();

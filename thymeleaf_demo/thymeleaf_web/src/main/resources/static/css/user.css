@@ -4,6 +4,7 @@ body {
 }
 
 table {
+    text-align: center;
     border: solid 1px black;
 }
 
@@ -11,4 +12,12 @@ td {
     width: 40px;
     height: 20px;
     border: solid 1px black;
+}
+
+div {
+    margin-top: 30px;
+}
+
+a {
+    cursor:pointer;
 }

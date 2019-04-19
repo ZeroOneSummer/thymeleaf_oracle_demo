@@ -6,6 +6,7 @@
  */
 package org.thymeleaf.entity;
 
+import cn.afterturn.easypoi.excel.annotation.Excel;
 import org.apache.thrift.EncodingUtils;
 import org.apache.thrift.protocol.TTupleProtocol;
 import org.apache.thrift.scheme.IScheme;
@@ -31,8 +32,13 @@ public class UserEntity implements org.apache.thrift.TBase<UserEntity, UserEntit
     schemes.put(TupleScheme.class, new UserEntityTupleSchemeFactory());
   }
 
+  @Excel(name = "ID", mergeVertical = false, isImportField = "id", width=25, numFormat = "0")
   public int id; // required
+
+  @Excel(name = "姓名", mergeVertical = false, isImportField = "name", width=25)
   public String name; // optional
+
+  @Excel(name = "年龄", mergeVertical = false, isImportField = "age", width=25, numFormat = "0")
   public short age; // optional
 
   /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */

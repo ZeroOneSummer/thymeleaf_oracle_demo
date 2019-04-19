@@ -25,6 +25,11 @@ public class UserController {
     @Autowired
     UserService.Iface userService;
 
+    @GetMapping("index.html")
+    public String index() {
+        return "index";
+    }
+
     @SysLog("切面测试")
     @GetMapping("getUsers")
     public String getUsers(Model model) throws Exception {
