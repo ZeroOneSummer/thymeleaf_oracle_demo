@@ -2,7 +2,9 @@ package com.dimai.thymeleaf_web.commons.lambda;
 
 import com.google.gson.Gson;
 
+import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -24,6 +26,14 @@ public class HighLamb {
         System.out.println("根据学校分区后：" + new Gson().toJson(partition));
     }
 
+    //格式化
+    public static void messageFormat() {
+        String msg = "欢迎光临，当前（{0}）等待的业务受理的顾客有{1}位，请排号办理业务！";
+        MessageFormat mf = new MessageFormat(msg);
+        String fmsg = mf.format(new Object[]{new Date(), 35});
+        System.out.println(fmsg);
+    }
+
 
     public static void main(String[] args) {
 
@@ -42,6 +52,7 @@ public class HighLamb {
 
         HighLamb.grouping(students);
         HighLamb.partition(students);
+        HighLamb.messageFormat();
 
     }
 
