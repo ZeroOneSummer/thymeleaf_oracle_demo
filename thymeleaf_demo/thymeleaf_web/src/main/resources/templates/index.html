@@ -10,9 +10,16 @@
 </head>
 <body>
     <div class="query-item">
-        <a href="http://localhost:8090/admin/getUsers">用户列表</a>
+<!--        <a href="http://localhost:8090/admin/getUsers">用户列表</a>-->
+        <a onclick="getUserList($('input[name=page]').val(), $('input[name=limit]').val());">查询用户列表</a>
+        <div>
+            第 <input name="page" th:value="${pages} == null ? 1 : ${pages.currPage}" style="width:20px" /> 页，
+            每页 <input name="limit" th:value="${pages} == null ? 3 : ${pages.pageSize}" style="width:20px" /> 条，
+            共 <input th:value="${pages} == null ? '' : ${pages.pageCount}" style="width:20px" readonly> 页，
+            共 <input th:value="${pages} == null ? '' : ${pages.count}" style="width:20px" readonly> 条
+        </div>
         <table>
-            <tr th:each="user : ${users}">
+            <tr th:each="user : ${pages}  == null ? null : ${pages.data}">
                 <td th:text="${user.id}">1</td>
                 <td th:text="${user.name}">zhangsan</td>
                 <td th:text="${user.age}">18</td>
@@ -20,8 +27,8 @@
         </table>
     </div>
     <div class="query-item">
-        <a href="http://localhost:8090/admin/downExcel">poi导出</a>&nbsp;&nbsp;&nbsp;
-        <a href="http://localhost:8090/admin/downExcelByEasy">easypoi导出</a>
+        <a href="http://10.97.55.59:8090/admin/downExcel">poi导出</a>&nbsp;&nbsp;&nbsp;
+        <a href="http://10.97.55.59:8090/admin/downExcelByEasy">easypoi导出</a>
     </div>
     <div class="query-item">
         <div class="query-box">

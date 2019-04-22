@@ -1,16 +1,20 @@
 package com.dimai.thymeleaf_web.controller;
 
 import com.dimai.thymeleaf_web.commons.annotion.SysLog;
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.thymeleaf.entity.UserEntity;
 import org.thymeleaf.service.UserService;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -32,10 +36,22 @@ public class UserController {
 
     @SysLog("切面测试")
     @GetMapping("getUsers")
-    public String getUsers(Model model) throws Exception {
+    public String getUsers(@RequestParam(name = "page") Integer page,
+                           @RequestParam(name = "limit") Integer limit, Model model) throws Exception {
+        Map<String, Object> pages = new HashMap<>();
 
+        PageHelper.startPage(page, limit);
         List<UserEntity> list = userService.getUsers();
-        model.addAttribute("users", list);
+        PageInfo<UserEntity> pageInfo = new PageInfo<>(list);
+        pageInfo.getTotal();
+
+        pages.put("currPage", pageInfo.getPageNum());
+        pages.put("pageSize", pageInfo.getPageSize());
+        pages.put("pageCount", pageInfo.getPages());
+        pages.put("count", pageInfo.getTotal());
+        pages.put("data", list);
+
+        model.addAttribute("pages", pages);
         log.info("getUsers数据返回：{}", model);
 
         return "index";

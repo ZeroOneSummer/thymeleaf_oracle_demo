@@ -89,6 +89,7 @@ public class SysLogAspet {
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         String className = joinPoint.getTarget().getClass().getName();
         String methodName = signature.getName();
+
         //请求的参数
         Object[] args = joinPoint.getArgs();
         Map<String,Object> params = new HashMap<>();

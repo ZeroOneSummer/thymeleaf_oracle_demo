@@ -41,3 +41,7 @@ function importExcel(event) {
 
 }
 
+function getUserList(page, limit){
+    var url = "http://10.97.55.59:8090/admin/getUsers";
+    window.location.href = url+"?page="+page+"&limit="+limit
+}

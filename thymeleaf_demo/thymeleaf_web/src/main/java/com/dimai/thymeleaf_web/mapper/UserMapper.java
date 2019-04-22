@@ -28,6 +28,7 @@ public interface UserMapper {
                 if(id != null){
                     WHERE("id=" + id);
                 }
+                ORDER_BY("id DESC");
             }}.toString();
         }
     }
