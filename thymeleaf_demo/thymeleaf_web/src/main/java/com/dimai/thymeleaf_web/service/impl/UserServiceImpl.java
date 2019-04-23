@@ -21,7 +21,7 @@ public class UserServiceImpl implements UserService.Iface {
     @Autowired
     UserMapper userMapper;
 
-    @Cacheable(value = "user" ,key = "targetClass + methodName + #p0")
+    @Cacheable(value = "getUsers" ,key = "targetClass + methodName + #p0")
     @Override
     public List<UserEntity> getUsers() throws TException {
         return userMapper.getUsers(null);
