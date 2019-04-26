@@ -71,6 +71,18 @@
             <version>4.0.0</version>
         </dependency>
 
+        <!--poi导出-->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi</artifactId>
+            <version>3.17</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>3.17</version>
+        </dependency>
+
         <!--文件服务器-->
         <dependency>
             <groupId>com.tencent.oa.fm</groupId>

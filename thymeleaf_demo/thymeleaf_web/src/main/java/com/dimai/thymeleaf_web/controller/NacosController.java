@@ -1,6 +1,5 @@
 package com.dimai.thymeleaf_web.controller;
 
-import com.alibaba.nacos.api.config.annotation.NacosValue;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,16 +17,16 @@ import java.util.Map;
 @RequestMapping("/")
 public class NacosController {
 
-    @NacosValue("${spring.datasource.type:none}")
+//    @NacosValue("${spring.datasource.type:none}")
     String dbType;
 
-    @NacosValue("${user.iname}")
+//    @NacosValue("${user.iname}")
     String name;
 
-    @NacosValue("${user.info}")
+//    @NacosValue("${user.info}")
     String info;
 
-    @NacosValue("${user.age}")
+//    @NacosValue("${user.age}")
     String age;
 
     @GetMapping("getConfig")
