@@ -1,307 +1,337 @@
 package com.dimai.thymeleaf_web.commons.util;
 
-import com.tencent.oa.fm.jarvis.core.common.StringUtil;
-import org.apache.log4j.Logger;
-import org.apache.poi.hssf.usermodel.HSSFDataFormat;
 import org.apache.poi.hssf.usermodel.HSSFDateUtil;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.apache.poi.hssf.util.HSSFColor;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFCell;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.util.CollectionUtils;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.beans.Introspector;
-import java.beans.PropertyDescriptor;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+/**
+ * @author jp
+ * 通用excel导入/导出
+ * TODO 实体不可用shift生成的
+ *
+ */
 public class ExcelUtil {
-    private final static Logger LOGGER = Logger.getLogger(ExcelUtil.class);
 
-    private static final String PATTERN_TYPE = "yyyy-MM-dd";
+    public final static String EXCEL_FILE_2003 = ".xls";
+    public final static String EXCEL_FILE_2007 = ".xlsx";
 
     /**
-     * 导出Excel文件
+     * 公共的导入excel方法
      *
-     * @param excelModel 导出的Excel相关的信息
-     * @param out        输出流
-     * @param <T>
+     * @param file 文件
+     * @return
+     * @throws IOException
      */
-    public static <T> void export(ExcelModel excelModel, OutputStream out, List<T> data, Class<? super T> cls) {
-        export(excelModel, out, PATTERN_TYPE, data, cls);
+    public static <T> List<T> importExcel(MultipartFile file, Class<T> clazz) throws IOException {
+
+        Workbook workbook = null;
+
+        try {
+            //读取文件内容
+            workbook = chooseWorkbook(file);
+
+            //获取工作表
+            Sheet sheet = workbook.getSheetAt(0);
+
+            //获取sheet中第一行行号
+            int firstRowNum = sheet.getFirstRowNum();
+            //获取sheet中最后一行行号
+            int lastRowNum = sheet.getLastRowNum();
+
+            //获取该实体所有定义的属性 返回Field数组
+            Field[] entityName = clazz.getDeclaredFields();
+
+            List<T> list = new ArrayList<T>();
+
+            //循环插入数据
+            for (int i = firstRowNum + 1; i <= lastRowNum; i++) {
+
+                Row row = sheet.getRow(i);
+
+                //可以根据该类名生成Java对象
+                T pojo = clazz.newInstance();
+
+                //除自增编号外，实体字段匹配sheet列
+                for (int j = 0; j < entityName.length; j++) {
+
+                    //获取属性的名字,将属性的首字符大写，方便构造set方法
+                    String name = "set" + entityName[j].getName().substring(0, 1).toUpperCase().concat(entityName[j].getName().substring(1).toLowerCase()) + "";
+                    //获取属性的类型
+                    String type = entityName[j].getGenericType().toString();
+
+                    Method m = null;
+                    //getMethod只能调用public声明的方法，而getDeclaredMethod基本可以调用任何类型声明的方法
+                    m = clazz.getDeclaredMethod(name, entityName[j].getType());
+
+                    Cell pname = row.getCell(j);
+                    //根据属性类型装入值
+                    switch (type) {
+                        case "int":
+                        case "class java.lang.Integer":
+                            m.invoke(pojo, Integer.valueOf(getVal(pname)));
+                            break;
+                        case "short":
+                        case "java.lang.Short":
+                            m.invoke(pojo, Short.valueOf(getVal(pname)));
+                            break;
+                        case "long":
+                        case "java.lang.Long":
+                            m.invoke(pojo, Long.valueOf(getVal(pname)));
+                            break;
+                        case "float":
+                        case "java.lang.Float":
+                        case "double":
+                        case "java.lang.Double":
+                        case "java.math.BigDecimal":
+                            m.invoke(pojo, Double.valueOf(getVal(pname)));
+                            break;
+                        case "char":
+                        case "java.lang.Character":
+                        case "class java.lang.String":
+                            m.invoke(pojo, getVal(pname));
+                            break;
+                        case "class java.util.Date":
+                            m.invoke(pojo, getVal(pname));
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                list.add(pojo);
+            }
+            return list;
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            workbook.close();
+        }
+        return null;
     }
 
+    /**
+     * 根据文件选择excel版本
+     *
+     * @return
+     * @throws Exception
+     */
+    public static Workbook chooseWorkbook(MultipartFile file) throws Exception {
 
-    private static Map<String, PropertyDescriptor> getProperties(Class<?> cls) {
-        try {
-            Map<String, PropertyDescriptor> result = new HashMap<>();
-            for (PropertyDescriptor item : Introspector.getBeanInfo(cls).getPropertyDescriptors()) {
-                result.put(item.getName(), item);
+        Workbook workbook = null;
+        String filename = file.getOriginalFilename();
+        String fileType = (filename.substring(filename.lastIndexOf("."), filename.length())).toLowerCase();
+
+        ByteArrayInputStream is = new ByteArrayInputStream(file.getBytes());
+        if (EXCEL_FILE_2003.equals(fileType)) {
+            workbook = new HSSFWorkbook(is);  //2003-
+        } else if (EXCEL_FILE_2007.equals(fileType)) {
+            workbook = new XSSFWorkbook(is);  //2007+
+        } else {
+            throw new Exception("解析的文件格式有误！");
+        }
+        return workbook;
+    }
+
+    /**
+     * 字段类型转换
+     *
+     * @param cell
+     * @return
+     */
+    public static String getVal(Cell cell) {
+        if (null != cell) {
+
+            switch (cell.getCellType()) {
+                case XSSFCell.CELL_TYPE_NUMERIC: // 数字
+                    String val = cell.getNumericCellValue() + "";
+                    int index = val.indexOf(".");
+
+                    if (Integer.valueOf(val.substring(index + 1)) == 0) {
+                        DecimalFormat df = new DecimalFormat("0");//处理科学计数法，取整数
+                        return df.format(cell.getNumericCellValue());
+                    }
+                    return cell.getNumericCellValue() + "";//double
+                case XSSFCell.CELL_TYPE_STRING: // 字符串
+                    return cell.getStringCellValue() + "";
+                case XSSFCell.CELL_TYPE_BOOLEAN: // Boolean
+                    return cell.getBooleanCellValue() + "";
+                case XSSFCell.CELL_TYPE_FORMULA: // 公式
+                    try {
+                        if (HSSFDateUtil.isCellDateFormatted(cell)) {
+                            Date date = cell.getDateCellValue();
+                            return (date.getYear() + 1900) + "-" + (date.getMonth() + 1) + "-" + date.getDate();
+                        } else {
+                            return String.valueOf((int) cell.getNumericCellValue());
+                        }
+                    } catch (IllegalStateException e) {
+                        return String.valueOf(cell.getRichStringCellValue());
+                    }
+                case XSSFCell.CELL_TYPE_BLANK: // 空值
+                    return "";
+                case XSSFCell.CELL_TYPE_ERROR: // 故障
+                    return "";
+                default:
+                    return "未知类型   ";
             }
-            return result;
-        } catch (Exception ex) {
-            throw new RuntimeException(ex);
+        } else {
+            return "";
         }
     }
 
+
+    //===================================================================================================================
+
     /**
      * 导出Excel文件
-     *
-     * @param excelModel 导出的Excel相关的信息
-     * @param out        输出流
-     * @param pattern    @eg. yyyy-MM-dd
-     * @param <T>
+     * @param sheetName
+     * @param headers
+     * @param dataset
+     * @param out
      */
-    public static <T> void export(ExcelModel excelModel, OutputStream out, String pattern, List<T> data, Class<? super T> cls) {
-        // 声明一个工作薄
-        Workbook workbook = new XSSFWorkbook();
+    public static <T> void exportExcel(String sheetName, String[] headers, Collection<T> dataset, OutputStream out) {
+        exportExcel(sheetName, headers, dataset, out, "yyyy-MM-dd", EXCEL_FILE_2007);
+    }
+
+    public static <T> void exportExcel(String sheetName, String[] headers, Collection<T> dataset, OutputStream out, String pattern, String version) {
+
+        //根据版本生成对于excel对象
+        Workbook workbook = null;
+        if (EXCEL_FILE_2003.equals(version.trim())) {
+            workbook = new HSSFWorkbook();
+        } else {
+            workbook = new XSSFWorkbook();
+        }
+
         // 生成一个表格
-        Sheet sheet = workbook.createSheet(excelModel.getTitle());
-        // 设置表格默认列宽度为15个字节
-        sheet.setDefaultColumnWidth(15);
-        // 生成一个样式
-        CellStyle headerStyle = workbook.createCellStyle();
-        // 设置这些样式
-        headerStyle.setFillForegroundColor(HSSFColor.HSSFColorPredefined.WHITE.getIndex());
-        headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        headerStyle.setBorderBottom(BorderStyle.THIN);
-        headerStyle.setBorderLeft(BorderStyle.THIN);
-        headerStyle.setBorderRight(BorderStyle.THIN);
-        headerStyle.setBorderTop(BorderStyle.THIN);
-        headerStyle.setAlignment(HorizontalAlignment.CENTER);
+        Sheet sheet = workbook.createSheet(sheetName);
+        //设置宽度
+        sheet.setDefaultColumnWidth(18);
+
+        // 生成一个样式1
+        CellStyle style = workbook.createCellStyle();
+        style.setAlignment(HorizontalAlignment.CENTER); //内容居中
+        // 生成一个字体
         Font font = workbook.createFont();
-        font.setFontHeightInPoints((short) 12);
-        font.setBold(true);
-        font.setColor(HSSFColor.HSSFColorPredefined.RED.getIndex());
-        headerStyle.setFont(font);
+        font.setFontName("宋体");
+        font.setBold(true);//加粗
+        font.setFontHeightInPoints((short) 11);
+        // 把字体应用到当前的样式
+        style.setFont(font);
 
-        CellStyle headerStyle_2 = workbook.createCellStyle();
-        // 设置这些样式
-        headerStyle_2.setFillForegroundColor(HSSFColor.HSSFColorPredefined.WHITE.getIndex());
-        headerStyle_2.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        headerStyle_2.setBorderBottom(BorderStyle.THIN);
-        headerStyle_2.setBorderLeft(BorderStyle.THIN);
-        headerStyle_2.setBorderRight(BorderStyle.THIN);
-        headerStyle_2.setBorderTop(BorderStyle.THIN);
-        headerStyle_2.setAlignment(HorizontalAlignment.CENTER);
-        Font headerFont = workbook.createFont();
-        headerFont.setFontHeightInPoints((short) 12);
-        headerFont.setBold(true);
-        headerFont.setColor(HSSFColor.HSSFColorPredefined.BLACK.getIndex());
-        headerStyle_2.setFont(headerFont);
-
-        // 生成并设置另一个样式
-        CellStyle stringStyle = workbook.createCellStyle();
-        stringStyle.setFillForegroundColor(HSSFColor.HSSFColorPredefined.WHITE.getIndex());
-        stringStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        stringStyle.setBorderBottom(BorderStyle.THIN);
-        stringStyle.setBorderLeft(BorderStyle.THIN);
-        stringStyle.setBorderRight(BorderStyle.THIN);
-        stringStyle.setBorderTop(BorderStyle.THIN);
-        stringStyle.setAlignment(HorizontalAlignment.CENTER);
-        stringStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+        //生成一个样式2
+        CellStyle style2 = workbook.createCellStyle();
+        style2.setAlignment(HorizontalAlignment.CENTER);
         // 生成另一个字体
         Font font2 = workbook.createFont();
-        font2.setBold(false);
         // 把字体应用到当前的样式
-        stringStyle.setFont(font2);
-
-        CellStyle decimalStyle = workbook.createCellStyle();
-        decimalStyle.setFillForegroundColor(HSSFColor.HSSFColorPredefined.WHITE.getIndex());
-        decimalStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        decimalStyle.setBorderBottom(BorderStyle.THIN);
-        decimalStyle.setBorderLeft(BorderStyle.THIN);
-        decimalStyle.setBorderRight(BorderStyle.THIN);
-        decimalStyle.setBorderTop(BorderStyle.THIN);
-        decimalStyle.setAlignment(HorizontalAlignment.RIGHT);
-        decimalStyle.setVerticalAlignment(VerticalAlignment.CENTER);
-        decimalStyle.setDataFormat(HSSFDataFormat.getBuiltinFormat("#,##0.00"));
-        // 生成另一个字体
-        Font font3 = workbook.createFont();
-        font3.setBold(false);
-        // 把字体应用到当前的样式
-        decimalStyle.setFont(font3);
-
-        CellStyle percentStyle = workbook.createCellStyle();
-        percentStyle.setFillForegroundColor(HSSFColor.HSSFColorPredefined.WHITE.getIndex());
-        percentStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        percentStyle.setBorderBottom(BorderStyle.THIN);
-        percentStyle.setBorderLeft(BorderStyle.THIN);
-        percentStyle.setBorderRight(BorderStyle.THIN);
-        percentStyle.setBorderTop(BorderStyle.THIN);
-        percentStyle.setAlignment(HorizontalAlignment.RIGHT);
-        percentStyle.setVerticalAlignment(VerticalAlignment.CENTER);
-        percentStyle.setDataFormat(HSSFDataFormat.getBuiltinFormat("0.00%"));
-        // 生成另一个字体
-        Font font4 = workbook.createFont();
-        font4.setBold(false);
-        // 把字体应用到当前的样式
-        percentStyle.setFont(font4);
+        style2.setFont(font2);
 
         // 产生表格标题行
         Row row = sheet.createRow(0);
-        int j = 0;
-        for (ExcelModel.ExcelColumn column : excelModel.getColumns()) {
-            Cell cell = row.createCell(j);
-            //判断是否必填
-            if (column.getIsRequired()) {
-                cell.setCellStyle(headerStyle);
-            } else {
-                // 把字体应用到当前的样式
-                cell.setCellStyle(headerStyle_2);
-            }
-            cell.setCellValue(column.getTitle());
-            j++;
+        Cell cellHeader;
+        for (int i = 0; i < headers.length; i++) {
+            cellHeader = row.createCell(i);
+            cellHeader.setCellStyle(style);
+            cellHeader.setCellValue(headers[i]);
         }
 
         // 遍历集合数据，产生数据行
-        Map<String, PropertyDescriptor> propertyDescriptorMap = getProperties(cls);
+        Iterator<T> it = dataset.iterator();
         int index = 0;
-        for (T t : data) {
+        T t;
+        Field[] fields;
+        Field field;
+        Pattern p = Pattern.compile("^//d+(//.//d+)?$");
+        Matcher matcher;
+        String fieldName;
+        String getMethodName;
+        Cell cell;
+        Class tCls;
+        Method getMethod;
+        Object value;
+        String textValue;
+        SimpleDateFormat sdf = new SimpleDateFormat(pattern);
+        while (it.hasNext()) {
             index++;
             row = sheet.createRow(index);
-
-            int i = 0;
-            for (ExcelModel.ExcelColumn column : excelModel.getColumns()) {
-                Cell cell = row.createCell(i);
-                cell.setCellStyle(stringStyle);
+            t = (T) it.next();
+            // 利用反射，根据JavaBean属性的先后顺序，动态调用getXxx()方法得到属性值
+            fields = t.getClass().getDeclaredFields();
+            for (int i = 0; i < fields.length; i++) {
+                cell = row.createCell(i);
+                cell.setCellStyle(style2);
+                field = fields[i];
+                fieldName = field.getName();
+                getMethodName = "get" + fieldName.substring(0, 1).toUpperCase()
+                        + fieldName.substring(1);
                 try {
-                    PropertyDescriptor propertyDescriptor = propertyDescriptorMap.get(column.getName());
-                    Object value = propertyDescriptor.getReadMethod().invoke(t);
-                    Object valueReal = propertyDescriptor.getPropertyType().equals(Date.class) ?
-                            new SimpleDateFormat(pattern).format((Date) value) : value;
-                    if (value != null) {
-                        switch (column.getColumnType()) {
-                            case DECIMAL:
-                                cell.setCellStyle(decimalStyle);
-                                cell.setCellValue((double) valueReal);
-                                break;
-                            case PERCENT:
-                                cell.setCellStyle(percentStyle);
-                                cell.setCellValue((double) valueReal);
-                                break;
-                            case STRING:
-                                cell.setCellStyle(stringStyle);
-                                cell.setCellValue(valueReal.toString());
-                                break;
+                    tCls = t.getClass();
+                    getMethod = tCls.getMethod(getMethodName, new Class[]{});
+                    value = getMethod.invoke(t, new Object[]{});
+                    // 判断值的类型后进行强制类型转换
+                    textValue = null;
+                    if (value instanceof Integer) {
+                        cell.setCellValue((Integer) value);
+                    } else if (value instanceof Float) {
+                        textValue = String.valueOf((Float) value);
+                        cell.setCellValue(textValue);
+                    } else if (value instanceof Double) {
+                        textValue = String.valueOf((Double) value);
+                        cell.setCellValue(textValue);
+                    } else if (value instanceof Long) {
+                        cell.setCellValue((Long) value);
+                    }
+                    if (value instanceof Boolean) {
+                        textValue = "是";
+                        if (!(Boolean) value) {
+                            textValue = "否";
+                        }
+                    } else if (value instanceof Date) {
+                        textValue = sdf.format((Date) value);
+                    } else {
+                        // 其它数据类型都当作字符串简单处理
+                        if (value != null) {
+                            textValue = value.toString();
+                        }
+                    }
+                    if (textValue != null) {
+                        matcher = p.matcher(textValue);
+                        if (matcher.matches()) {
+                            // 是数字当作double处理
+                            cell.setCellValue(Double.parseDouble(textValue));
+                        } else {
+                            cell.setCellValue(textValue);
                         }
                     }
                 } catch (Exception e) {
-                    LOGGER.error(e.getMessage(), e);
+                    e.printStackTrace();
                 }
-                i++;
             }
         }
         try {
             workbook.write(out);
         } catch (IOException e) {
-            LOGGER.error(e.getMessage(), e);
+            e.printStackTrace();
+        } finally {
+            try {
+                workbook.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
-    private static Workbook createWorkBook(String fileName, InputStream is) throws Exception {
-        if (fileName.toLowerCase().endsWith("xls")) {
-            return new HSSFWorkbook(is);
-        }
-        if (fileName.toLowerCase().endsWith("xlsx")) {
-            return WorkbookFactory.create(is);
-        }
-        return null;
-    }
-
-    public static <T> Map<String, Object> excelImport(byte[] byt, ExcelModel excelModel, Class<T> cls) throws Exception {
-        return excelImport(byt, excelModel, cls, null);
-    }
-
-    public static <T> Map<String, Object> excelImport(byte[] byt, ExcelModel excelModel, Class<T> cls, Integer limit) throws Exception {
-        try {
-            Map<String, Object> map = new HashMap<>();
-            String fileName = excelModel.getTitle();
-            Workbook workbook = createWorkBook(fileName, new ByteArrayInputStream(byt));
-            //只处理 第一个Sheet
-            Sheet sheet = workbook.getSheetAt(0);
-            LOGGER.info("导入Excel文件" + fileName + ",共:" + sheet.getLastRowNum() + "行");
-
-            //限制上传条数
-            if (limit != null && sheet.getPhysicalNumberOfRows() > limit + 1) {
-                map.put("msg", "超出限制行数:" + limit + "行");
-                return map;
-            }
-
-            Row row_0 = sheet.getRow(0);
-
-
-            int z = 0;
-            int numberOfCells = row_0.getPhysicalNumberOfCells();
-            for (ExcelModel.ExcelColumn column : excelModel.getColumns()) {
-                Cell cell = row_0.getCell(z);
-                if("rowNum".equals(column.getName())){
-                    numberOfCells += 1;
-                }else if (StringUtil.isNullOrEmpty(column.getTitle()) || !column.getTitle().equals(cell.getStringCellValue())) {
-                    map.put("msg", "文件头部属性名称不匹配");
-                    return map;
-                }
-                z++;
-            }
-
-            if (excelModel.getColumns().size() == numberOfCells) {
-            } else {
-                map.put("msg", "文件头部属性长度不匹配");
-                return map;
-            }
-            List<T> list = new ArrayList<>();
-            Map<String, PropertyDescriptor> propertyDescriptorMap = getProperties(cls);
-            for (int i = 1; i < sheet.getPhysicalNumberOfRows(); i++) {
-                int j = 0;
-                T resultValue = cls.newInstance();
-                for (ExcelModel.ExcelColumn column : excelModel.getColumns()) {
-                    Row row = sheet.getRow(i);
-                    Cell cell = row.getCell(j);
-
-                    PropertyDescriptor propertyDescriptor = propertyDescriptorMap.get(column.getName());
-                    if ("rowNum".equals(column.getName())) {
-                        propertyDescriptor.getWriteMethod().invoke(resultValue, row.getRowNum()+1);
-                    }
-
-                    if (cell != null) {
-                         if (propertyDescriptor.getPropertyType().equals(String.class)) {
-                            String textValue = "";
-                            if (cell.getCellTypeEnum() == CellType.NUMERIC) {
-                                if (HSSFDateUtil.isCellDateFormatted(cell)) {
-                                    SimpleDateFormat sdf = new SimpleDateFormat(PATTERN_TYPE);
-                                    Date date = HSSFDateUtil.getJavaDate(cell.getNumericCellValue());
-                                    textValue = sdf.format(date);
-                                } else {
-                                    textValue = String.valueOf(cell.getNumericCellValue());
-                                }
-                            } else {
-                                textValue = cell.getStringCellValue();
-                            }
-                            propertyDescriptor.getWriteMethod().invoke(resultValue, textValue);
-                        } else if (propertyDescriptor.getPropertyType().equals(double.class)
-                                || propertyDescriptor.getPropertyType().equals(Double.class)
-                                || propertyDescriptor.getPropertyType().equals(int.class)
-                                || propertyDescriptor.getPropertyType().equals(Integer.class)) {
-                            propertyDescriptor.getWriteMethod().invoke(resultValue, cell.getNumericCellValue());
-                        }
-                    }
-                    j++;
-                }
-                list.add(resultValue);
-            }
-            if (CollectionUtils.isEmpty(list)) {
-                map.put("msg", "文件数据内容为空!");
-                return map;
-            }
-            map.put("data", list);
-            return map;
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            throw ex;
-        }
-    }
 }

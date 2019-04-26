@@ -10,7 +10,6 @@
 </head>
 <body>
     <div class="query-item">
-<!--        <a href="http://localhost:8090/admin/getUsers">用户列表</a>-->
         <a onclick="getUserList($('input[name=page]').val(), $('input[name=limit]').val());">查询用户列表</a>
         <div>
             第 <input name="page" th:value="${pages} == null ? 1 : ${pages.currPage}" style="width:20px" /> 页，

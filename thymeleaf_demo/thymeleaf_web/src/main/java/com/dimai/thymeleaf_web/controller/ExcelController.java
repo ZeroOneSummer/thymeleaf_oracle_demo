@@ -3,10 +3,7 @@ package com.dimai.thymeleaf_web.controller;
 import cn.afterturn.easypoi.excel.ExcelExportUtil;
 import cn.afterturn.easypoi.excel.entity.ExportParams;
 import com.dimai.thymeleaf_web.commons.exception.RRException;
-import com.dimai.thymeleaf_web.commons.model.UserEntity2;
-import com.dimai.thymeleaf_web.commons.util.ExcelModel;
 import com.dimai.thymeleaf_web.commons.util.ExcelUtil;
-import com.google.gson.Gson;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -81,18 +78,9 @@ public class ExcelController {
     public void downExcel(HttpServletResponse response){
         try {
 
-            //表名
-            String title = "ZOS" + "_" + new SimpleDateFormat("yyyyMMdd").format(new Date()) + "_报表.xlsx";
-
-            //表头
-            List<ExcelModel.ExcelColumn> columns = new ArrayList<>();
-            columns.add(new ExcelModel.ExcelColumn("id", "ID", ExcelModel.ColumnType.STRING));
-            columns.add(new ExcelModel.ExcelColumn("name", "姓名", ExcelModel.ColumnType.STRING));
-            columns.add(new ExcelModel.ExcelColumn("age", "年龄", ExcelModel.ColumnType.STRING));
-
-            ExcelModel excelModel = new ExcelModel();
-            excelModel.setTitle(title);
-            excelModel.setColumns(columns);
+            //表名、表头设置
+            String sheetName = "ZOS" + "_" + new SimpleDateFormat("yyyyMMdd").format(new Date()) + "_报表.xlsx";
+            String[] headers = new String[]{"ID", "姓名", "年龄"};
 
             //数据
             List<UserEntity> list = userService.getUsers();
@@ -103,17 +91,15 @@ public class ExcelController {
             list.add(new UserEntity(3, "赵敏", (short) 19));
             list.add(new UserEntity(4, "宋青书", (short) 18));*/
 
-            //输出流
+            //响应格式设置(必须放在导出之前)
             ServletOutputStream out = response.getOutputStream();
-            //响应格式设置
             response.reset();
-            response.setHeader("Content-disposition", "attachment; filename="+
-                    new String(title.getBytes("UTF-8"), "ISO8859-1"));
+            response.setHeader("Content-disposition", "attachment; filename="+new String(sheetName.getBytes("UTF-8"), "ISO8859-1"));
             response.setCharacterEncoding("UTF-8");
             response.setContentType("application/msexcel");
 
             //导出
-            ExcelUtil.export(excelModel, out, list, UserEntity.class);
+            ExcelUtil.exportExcel(sheetName, headers, list, out);
 
             out.flush();
             out.close();
@@ -134,22 +120,15 @@ public class ExcelController {
             put("rmk", "");
         }};
 
-        //导入文件名
-        String title = file.getOriginalFilename();
+        try {
+            List<UserEntity> list = ExcelUtil.importExcel(file, UserEntity.class);
 
-        //封装实体对应属性
-        List<ExcelModel.ExcelColumn> columns = new ArrayList<>();
-        columns.add(new ExcelModel.ExcelColumn("id", "ID", ExcelModel.ColumnType.STRING));
-        columns.add(new ExcelModel.ExcelColumn("name", "姓名", ExcelModel.ColumnType.STRING));
-        columns.add(new ExcelModel.ExcelColumn("age", "年龄", ExcelModel.ColumnType.STRING));
-
-        ExcelModel excelModel = new ExcelModel();
-        excelModel.setTitle(title);
-        excelModel.setColumns(columns);
-
-        //入参：文件、映射实体、封装实体、限制行数
-        Map<String, Object> map = ExcelUtil.excelImport(file.getBytes(), excelModel, UserEntity2.class, 100);
-        log.info("导入的数据：{}", new Gson().toJson(map.get("data")));
+            log.info("导入文件 ：{} 成功，数据量 {} 条", file.getOriginalFilename(), list.size());
+        } catch (Exception e) {
+            rs.put("code", 201);
+            rs.put("msg", "import failure");
+            throw new RuntimeException("import failure：", e);
+        }
 
         return rs;
     }
